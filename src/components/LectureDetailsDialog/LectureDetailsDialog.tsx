@@ -110,8 +110,8 @@ export function LectureDetailsDialog({ open, lecture, onClose }: LectureDetailsD
  // Local: Dentro de LectureDetailsDialog
 
 const getScheduleInfo = () => {
-    const dateValue = lecture.date?.value;
-    const endDate = lecture.endDate;
+    const dateValue = (lecture && lecture.date) ? lecture.date.value : '';
+    const endDate = (lecture) ? lecture.endDate : '';
 
     const diaDaSemanaMap = {
         '0': 'DOM', '1': 'SEG', '2': 'TER', '3': 'QUA', '4': 'QUI', '5': 'SEX', '6': 'SÁB',
@@ -165,7 +165,7 @@ const getScheduleInfo = () => {
 
         // Mapeia os índices de dia para abreviações (SEG, TER, QUA)
         const diasDaSemana = diasIndices
-            .map(index => diaDaSemanaMap[index as keyof typeof diaDaSemanaMap])
+            .map((index: string) => diaDaSemanaMap[index as keyof typeof diaDaSemanaMap])
             .filter(Boolean)
             .join(' '); // Junta com espaço
 
@@ -196,26 +196,14 @@ const calculateStartTime = (endDateString: string) => {
         return "Data de Início Inválida";
     }
 };
-
-    const calculateDuration = () => {
-        try {
-            const start = new Date(lecture.startTime);
-            const end = new Date(lecture.endTime);
-            const diffMs = end.getTime() - start.getTime();
-            const diffMins = Math.floor(diffMs / 60000);
-            const hours = Math.floor(diffMins / 60);
-            const minutes = diffMins % 60;
-            return `${hours}h ${minutes}min`;
-        } catch {
-            return "N/A";
-        }
-    };
-
+    
     const getProfessorName = () => {
+        if (!lecture) return;
         return lecture.professor?.name || `ID: ${lecture.professorId}`;
     };
 
     const getRoomName = () => {
+        if (!lecture) return;
         return lecture.room?.code || `ID: ${lecture.roomId}`;
     };
 

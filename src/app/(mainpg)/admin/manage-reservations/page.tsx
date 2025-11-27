@@ -210,14 +210,18 @@ const mapBackendToFrontend = (backendItem: any): Reservation => {
                     )})}
                 </div>
             </main>
+{
+    selectedReservation != null && (
 
-            <ReservationDetailsDialog
-                open={!!selectedReservation}
-                reservation={selectedReservation}
-                onClose={() => setSelectedReservation(null)}
-                approve ={() => handleAction(selectedReservation.id, 'approve')}
-                reject ={() => handleAction(selectedReservation.id, 'approve')}
-            />
+        <ReservationDetailsDialog
+            open={!!selectedReservation}
+            reservation={selectedReservation}
+            onClose={() => setSelectedReservation(null)}
+            approve ={() => handleAction(selectedReservation.id, 'approve')}
+            reject ={() => handleAction(selectedReservation.id, 'approve')}
+        />
+    )
+}
         </div>
     );
 }

@@ -20,8 +20,10 @@ export type Lecture = {
     id: string;
     subjectName: string;
     professorId: string;
+    date: {value:string}
     professor?: Professor;
     roomId: string;
+    endDate: string
     room?: Room;
     startTime: string;
     endTime: string;
