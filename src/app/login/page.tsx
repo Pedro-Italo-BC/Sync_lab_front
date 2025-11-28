@@ -37,29 +37,39 @@ export default function Login() {
     async function onSubmit(data: loginFormData) {
         setIsLoading(true)
             console.log(isLoading)
-        try{
-            const res = await fetch(`${BASE_URL}/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                    credential: {
-                        email: data.email,
-                        password: data.password
-                    }
-                })
-            })
-            if (res.ok) {
-                toast.success("Logado com sucesso")  
-                router.push('/home')
-            } else {
-                toast.error("Email ou senha incorreta")
+    try {
+    const res = await fetch(`${BASE_URL}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+            credential: {
+                email: data.email,
+                password: data.password
             }
+        })
+    });
 
-            const dataRes = await res;
+    const dataRes = await res.json();
 
-            console.log(dataRes)
-        } catch (err) {
+    if (res.ok) {
+        toast.success("Logado com sucesso");
+
+        const accessRaw = dataRes.token.access_token;
+        const refreshRaw = dataRes.token.refresh_token;
+
+        const accessToken = accessRaw.split("=")[1].split(";")[0];
+        const refreshToken = refreshRaw.split("=")[1].split(";")[0];
+
+        document.cookie = `access_token=${accessToken}; path=/; max-age=86400`;
+        document.cookie = `refresh_token=${refreshToken}; path=/; max-age=604800`;
+
+        router.push('/home');
+    } else {
+        toast.error("Email ou senha incorreta");
+    }
+
+    } catch (err) {
             toast.error("Algo deu errado")
             console.error(err)
         } finally {
