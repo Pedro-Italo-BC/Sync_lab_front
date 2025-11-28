@@ -45,7 +45,7 @@ export function Avatar({ src }: AvatarProps) {
         async function fetchUserData() {
             try {
                 
-                const response = await fetch(PERSON_URL +"/" + userId, { 
+                const response = await fetch(PERSON_URL +"/self", { 
                             headers: { 'Content-Type': 'application/json' },
                             credentials: 'include'
                 });
