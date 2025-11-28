@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { api_url } from '@/utils/fetch-url';
-
+import Cookies from 'js-cookie'
 const BASE_URL = `${api_url}/auth`
 
 const loginFormSchema = z.object({
@@ -66,6 +66,8 @@ export default function Login() {
 
         localStorage.setItem("access_token", `${accessToken}`);
         localStorage.setItem("refresh_token", `${accessToken}`);
+
+        console.log(Cookies.get('access_token'))
 
 
         // router.push('/home');
