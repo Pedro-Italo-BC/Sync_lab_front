@@ -1,4 +1,6 @@
-'use client'
+"use client";
+
+export const dynamic = "force-dynamic";
 
 import { Label } from "@/components/Label/Label"
 import { ActionButton } from "@/components/ActionButton/ActionButton"

@@ -17,7 +17,7 @@ interface CustomJwtPayload extends Omit<JwtPayload, 'sub'> {
 export function getToken(kind: TokenKind = 'access'): string | undefined {
   const key = kind === 'access' ? ACCESS_TOKEN_KEY : REFRESH_TOKEN_KEY
 
-  const aa = Cookies.get(key) 
+  const aa = Cookies.get(key)
   return aa
 }
 
@@ -49,18 +49,33 @@ export function isLoggedIn(): boolean {
   return !!token && !isTokenExpired(token)
 }
 
-export function getCurrentPayload(kind: TokenKind = 'access'): CustomJwtPayload | void{
+export function getCurrentPayload(kind: TokenKind = 'access'): CustomJwtPayload | void {
   const token = getToken(kind)
   return getPayload(token)
 }
 
+/**
+ * Retorna o 'id' armazenado no localStorage, ou null se não for ambiente de navegador.
+ */
 export function getSub(): string | number | null {
-  // const payload = getCurrentPayload('access')
-  return localStorage.getItem('id');
+  if (typeof window !== 'undefined') {
+    const id = localStorage.getItem('id');
+    // Tenta converter para número se for uma string numérica
+    return id ? (isNaN(Number(id)) ? id : Number(id)) : null;
+  }
+  return null;
 }
 
+/**
+ * Retorna o 'role' armazenado no localStorage, ou null se não for ambiente de navegador.
+ */
 export function getRole(): string | string[] | null {
-  return localStorage.getItem('role');
+  if (typeof window !== 'undefined') {
+    // Nota: O valor do localStorage é sempre string, mas a assinatura da função mantém
+    // compatibilidade com o tipo CustomJwtPayload
+    return localStorage.getItem('role');
+  }
+  return null;
 }
 
 export function attachAuthHeader(init: RequestInit = {}): RequestInit {
@@ -72,6 +87,11 @@ export function attachAuthHeader(init: RequestInit = {}): RequestInit {
 
 export function logout() {
   deleteTokenCookies()
+  // Adiciona a remoção do localStorage para garantir a limpeza total
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('id')
+    localStorage.removeItem('role')
+  }
 }
 
 export default {

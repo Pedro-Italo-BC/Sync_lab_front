@@ -1,14 +1,14 @@
 "use client";
 
-import { UserCard } from "@/components/UserCard/UserCard";
+export const dynamic = "force-dynamic";
+
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowBack } from "@mui/icons-material";
+import { UserCard } from "@/components/UserCard/UserCard";
 import { api_url } from "@/utils/fetch-url";
-import noImage from '../../../../../public/user-img.png'
-
-import Cookies from "js-cookie";
+import noImage from '../../../../../public/user-img.png';
 import {
   Dialog,
   Box,
@@ -65,7 +65,7 @@ const RoleMap: Record<ApiUser["role"], string> = {
   STUDENT: "Aluno",
 };
 
-export default function UsersPage() {
+export default function ManageReservationsPage() {
   const { register, handleSubmit } = useForm<FilterForm>();
   const [filters, setFilters] = useState<FilterForm>({});
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -76,14 +76,13 @@ export default function UsersPage() {
   const [editForm, setEditForm] = useState<User | null>(null);
   const [editImage, setEditImage] = useState<File | null>(null);
 
+  // Busca usuários do backend
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const c = Cookies.get('access_token')
-
         const res = await fetch(`${api_url}/api/person`, {
           method: "GET",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${c}`},
+          headers: { "Content-Type": "application/json" },
           credentials: "include",
         });
         if (!res.ok) throw new Error("Erro ao buscar usuários");
@@ -100,54 +99,53 @@ export default function UsersPage() {
           description: user.description,
           matricula: user.personCode,
           profileUrl: user.profileUrl,
-          course: user.course || (
-            user.role === "STUDENT" ? "Ciência da Computação" :
-            user.role === "PROFESSOR" ? "Administração" :
-            "Economia"
-          ),
+          course:
+            user.course ||
+            (user.role === "STUDENT"
+              ? "Ciência da Computação"
+              : user.role === "PROFESSOR"
+              ? "Administração"
+              : "Economia"),
         }));
 
         setUsers(mapped);
-        const uniqueRoles = Array.from(new Set(mapped.map((user) => user.role)));
-        const uniqueCourses = Array.from(
-          new Set(mapped.map((user) => user.course).filter(Boolean))
-        );
-        setRoles(["", ...uniqueRoles]);
-        setCourses(["", ...uniqueCourses]);
+        setRoles(["", ...Array.from(new Set(mapped.map((u) => u.role)))]);
+        setCourses([
+          "",
+          ...Array.from(
+            new Set(mapped.map((u) => u.course).filter(Boolean))
+          ),
+        ]);
       } catch (err) {
         console.error(err);
       } finally {
         setLoading(false);
       }
     };
+
     fetchUsers();
   }, []);
 
-  function onSubmit(data: FilterForm) {
-    setFilters(data);
-  }
+  const onSubmit = (data: FilterForm) => setFilters(data);
 
   const handleSave = async () => {
     if (!editForm) return;
     try {
       let urlResponse = editForm.profileUrl || "";
-        
-      if(editImage) {
+
+      if (typeof window !== "undefined" && editImage) {
         const formData = new FormData();
         formData.append("image", editImage);
 
         const imageResponse = await fetch(`${api_url}/api/upload`, {
-          method: 'POST',
+          method: "POST",
           credentials: "include",
-          body: formData
-        })
+          body: formData,
+        });
 
-        if (!imageResponse.ok) {
-          throw new Error("Falha ao fazer upload da imagem.");
-        }
-        
+        if (!imageResponse.ok) throw new Error("Falha ao fazer upload da imagem");
         const responseBody = await imageResponse.json();
-        urlResponse = responseBody.url; 
+        urlResponse = responseBody.url;
       }
 
       const updatedEditForm = { ...editForm, profileUrl: urlResponse };
@@ -156,53 +154,51 @@ export default function UsersPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedEditForm),
-        credentials: "include"
+        credentials: "include",
       });
-      
+
       setUsers((prev) =>
         prev.map((u) => (u.id === updatedEditForm.id ? { ...updatedEditForm } : u))
       );
       setSelectedUser(null);
       setEditForm(null);
       setEditImage(null);
-    } catch (e) {
-      console.error("Erro ao salvar usuário:", e);
+    } catch (err) {
+      console.error(err);
     }
   };
 
   const handleDelete = async () => {
-    if(selectedUser != null && confirm(`Você realmente deseja deletar o(a) usuário(a) ${selectedUser.name}`)) {
+    if (selectedUser && typeof window !== "undefined" && confirm(`Deletar ${selectedUser.name}?`)) {
       try {
         await fetch(`${api_url}/api/person/${selectedUser.id}`, {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
         });
-      setUsers((prev) =>
-        prev.filter((u) => (u.id !== selectedUser.id)  
-      ));
-      setSelectedUser(null);
-      setEditForm(null);
-      setEditImage(null);
-      } catch(e) {
-        console.error(e);
-      }     
-    }    
-  }
+        setUsers((prev) => prev.filter((u) => u.id !== selectedUser.id));
+        setSelectedUser(null);
+        setEditForm(null);
+        setEditImage(null);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
 
-  const filteredUsers = users.filter((user) => {
-    const matchesRole = filters.role ? user.role === filters.role : true;
-    const matchesCourse = filters.course ? user.course === filters.course : true;
-    const matchesName = filters.search
-      ? user.name.toLowerCase().includes(filters.search.toLowerCase())
+  const filteredUsers = users.filter((u) => {
+    const matchRole = filters.role ? u.role === filters.role : true;
+    const matchCourse = filters.course ? u.course === filters.course : true;
+    const matchName = filters.search
+      ? u.name.toLowerCase().includes(filters.search.toLowerCase())
       : true;
-    return matchesRole && matchesCourse && matchesName;
+    return matchRole && matchCourse && matchName;
   });
 
   const grouped = {
-    Administrador: filteredUsers.filter((user) => user.role === "Administrador"),
-    Professor: filteredUsers.filter((user) => user.role === "Professor"),
-    Aluno: filteredUsers.filter((user) => user.role === "Aluno"),
+    Administrador: filteredUsers.filter((u) => u.role === "Administrador"),
+    Professor: filteredUsers.filter((u) => u.role === "Professor"),
+    Aluno: filteredUsers.filter((u) => u.role === "Aluno"),
   };
 
   const handleCloseDialog = () => {
@@ -212,22 +208,16 @@ export default function UsersPage() {
   };
 
   const getImageUrl = () => {
-    if (editImage) {
-      return URL.createObjectURL(editImage);
-    }
-    if (selectedUser?.profileUrl) {
-      return selectedUser.profileUrl;
-    }
+    if (typeof window === "undefined") return noImage.src;
+    if (editImage) return URL.createObjectURL(editImage);
+    if (selectedUser?.profileUrl) return selectedUser.profileUrl;
     return noImage.src;
   };
 
   return (
     <div className="flex w-full h-screen gap-8">
       <div className="w-28 h-full flex flex-col gap-2.5">
-        <Link
-          href="/admin"
-          className="bg-[var(--foreground)] w-full flex justify-center items-center h-12 rounded-lg hover:bg-red-500 hover:text-white cursor-pointer duration-300 transition"
-        >
+        <Link href="/admin" className="bg-[var(--foreground)] w-full flex justify-center items-center h-12 rounded-lg hover:bg-red-500 hover:text-white cursor-pointer duration-300 transition">
           <ArrowBack />
         </Link>
       </div>
@@ -238,161 +228,65 @@ export default function UsersPage() {
         <form onSubmit={handleSubmit(onSubmit)} className="flex gap-4 mb-4">
           <FormControl sx={{ minWidth: 150 }}>
             <InputLabel id="role-select-label">Função</InputLabel>
-            <Select
-              labelId="role-select-label"
-              id="role-select"
-              label="Função"
-              defaultValue=""
-              {...register("role")}
-            >
-              {roles.map((role) => (
-                <MenuItem key={role} value={role}>
-                  {role || "Todas as Funções"}
-                </MenuItem>
-              ))}
+            <Select labelId="role-select-label" {...register("role")} defaultValue="">
+              {roles.map((role) => <MenuItem key={role} value={role}>{role || "Todas as Funções"}</MenuItem>)}
             </Select>
           </FormControl>
 
-          <TextField
-            label="Buscar por nome"
-            variant="outlined"
-            {...register("search")}
-            sx={{ flex: 1 }}
-          />
-          <Button type="submit" variant="contained" color="primary" sx={{ textTransform: "none" }}>
-            Aplicar Filtros
-          </Button>
+          <TextField label="Buscar por nome" variant="outlined" {...register("search")} sx={{ flex: 1 }} />
+          <Button type="submit" variant="contained" sx={{ textTransform: "none" }}>Aplicar Filtros</Button>
         </form>
 
         <div className="flex-1 overflow-y-auto mt-6 pr-2">
-          {loading ? (
-            <p className="text-gray-500">Carregando usuários...</p>
-          ) : (
-            <div className="flex flex-col gap-6">
-              {Object.entries(grouped).map(([role, users]) =>
-                users.length > 0 ? (
-                  <section key={role}>
-                    <h2 className="text-xl font-semibold text-black mb-2">{role}s</h2>
-                    <div className="flex flex-wrap gap-4">
-                      {users.map((user) => (
-                        <UserCard
-                          key={user.id}
-                          name={user.name}
-                          personCode={user.personCode || ""}
-                          role={user.role}
-                          imageUrl={user.profileUrl}
-                          onEdit={() => {
-                            setSelectedUser(user);
-                            setEditForm(user);
-                            setEditImage(null); 
-                          }}
-                        />
-                      ))}
-                    </div>
-                  </section>
-                ) : null
-              )}
-            </div>
-          )}
+          {loading ? <p className="text-gray-500">Carregando usuários...</p> :
+            Object.entries(grouped).map(([role, users]) =>
+              users.length > 0 && (
+                <section key={role}>
+                  <h2 className="text-xl font-semibold text-black mb-2">{role}s</h2>
+                  <div className="flex flex-wrap gap-4">
+                    {users.map((user) => (
+                      <UserCard
+                        key={user.id}
+                        name={user.name}
+                        personCode={user.personCode || ""}
+                        role={user.role}
+                        imageUrl={user.profileUrl}
+                        onEdit={() => { setSelectedUser(user); setEditForm(user); setEditImage(null); }}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )
+            )
+          }
         </div>
       </main>
 
-      <Dialog
-        open={!!selectedUser}
-        onClose={handleCloseDialog}
-        TransitionComponent={Slide}
-        keepMounted
-        sx={{
-          "& .MuiBackdrop-root": {
-            backgroundColor: "rgba(0, 0, 0, 0.7)",
-          },
-        }}
-        PaperProps={{
-          sx: {
-            maxWidth: 600,
-            width: "100%",
-            margin: "auto",
-            borderRadius: 4,
-            backgroundColor: "#fff",
-            color: "#000",
-            p: 4,
-          },
-        }}
-      >
+      <Dialog open={!!selectedUser} onClose={handleCloseDialog} TransitionComponent={Slide} keepMounted
+        PaperProps={{ sx: { maxWidth: 600, width: "100%", margin: "auto", borderRadius: 4, p: 4 } }}>
         {editForm && (
           <Box display="flex" flexDirection="column" gap={3}>
             <Box display="flex" justifyContent="space-between" alignItems="center">
               <Typography variant="h6">Editar Usuário</Typography>
-              <IconButton onClick={handleCloseDialog}>
-                <CloseIcon />
-              </IconButton>
+              <IconButton onClick={handleCloseDialog}><CloseIcon /></IconButton>
             </Box>
 
-            <label htmlFor="editUserImage" style={{ cursor: 'pointer' }}>
+            <label htmlFor="editUserImage" style={{ cursor: "pointer" }}>
               <p className="font-semibold text-[#333] mb-2">Modificar foto do usuário</p>
-              <img
-                src={getImageUrl()}
-                width={80}
-                height={80}
-                alt="Foto do usuário"
-                className="w-20 h-20 hover:brightness-90 transition duration-300 rounded-lg object-cover"
-              />
-
-              <input
-                className="invisible absolute"
-                type="file"
-                accept="image/*"
-                id="editUserImage"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] || null
-                  setEditImage(file);
-                }}
-              />
+              <img src={getImageUrl()} width={80} height={80} alt="Foto do usuário"
+                className="w-20 h-20 hover:brightness-90 transition duration-300 rounded-lg object-cover" />
+              <input className="invisible absolute" type="file" accept="image/*" id="editUserImage"
+                onChange={(e) => setEditImage(e.target.files?.[0] || null)} />
             </label>
 
-            <TextField
-              label="Nome"
-              value={editForm.name}
-              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="Código de pessoa"
-              value={editForm.personCode}
-              onChange={(e) => setEditForm({ ...editForm, personCode: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="Matrícula"
-              value={editForm.matricula}
-              onChange={(e) => setEditForm({ ...editForm, matricula: e.target.value })}
-              fullWidth
-            />
-            <TextField
-              label="Descrição"
-              value={editForm.description}
-              onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-              multiline
-              rows={3}
-              fullWidth
-            />
+            <TextField label="Nome" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} fullWidth />
+            <TextField label="Código de pessoa" value={editForm.personCode} onChange={(e) => setEditForm({ ...editForm, personCode: e.target.value })} fullWidth />
+            <TextField label="Matrícula" value={editForm.matricula} onChange={(e) => setEditForm({ ...editForm, matricula: e.target.value })} fullWidth />
+            <TextField label="Descrição" value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} multiline rows={3} fullWidth />
+
             <Box display="flex" justifyContent="flex-end" gap={2}>
-              <Button
-                variant="contained"
-                color="error"
-                onClick={handleDelete}
-                sx={{ textTransform: "none" }}
-              >
-                Excluir Usuário
-              </Button>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleSave}
-                sx={{ textTransform: "none" }}
-              >
-                Salvar Alterações
-              </Button>
+              <Button variant="contained" color="error" onClick={handleDelete} sx={{ textTransform: "none" }}>Excluir Usuário</Button>
+              <Button variant="contained" color="primary" onClick={handleSave} sx={{ textTransform: "none" }}>Salvar Alterações</Button>
             </Box>
           </Box>
         )}

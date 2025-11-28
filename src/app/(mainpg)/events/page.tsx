@@ -1,4 +1,6 @@
-'use client'
+'use client';
+
+export const dynamic = 'force-dynamic';
 
 import { useState, useEffect, useCallback } from "react";
 import { LectureCard } from "@/components/LectureCard/LectureCard";
@@ -15,6 +17,7 @@ export default function LecturesPage() {
     const [error, setError] = useState<string | null>(null);
 
     const fetchLectures = useCallback(async () => {
+        if (typeof window === "undefined") return; // evita SSR
         setIsLoading(true);
         setError(null);
         try {
@@ -45,7 +48,6 @@ export default function LecturesPage() {
 
     return (
         <div className="flex w-full h-screen gap-8">
-      
             {/* Conteúdo Principal */}
             <main className="bg-[var(--foreground)] flex-1 h-full rounded-lg p-8 flex flex-col overflow-y-auto">
                 <h1 className="text-2xl font-bold text-black mb-6">Listagem de Aulas</h1>
@@ -67,7 +69,7 @@ export default function LecturesPage() {
                 
                 {/* Grid de Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-                    {lectures.map((lecture) => (
+                    {typeof window !== "undefined" && lectures.map((lecture) => (
                         <LectureCard
                             key={lecture.id}
                             lecture={lecture}
@@ -78,11 +80,13 @@ export default function LecturesPage() {
             </main>
 
             {/* Modal de Detalhes */}
-            <LectureDetailsDialog
-                open={!!selectedLecture}
-                lecture={selectedLecture}
-                onClose={() => setSelectedLecture(null)}
-            />
+            {typeof window !== "undefined" && (
+                <LectureDetailsDialog
+                    open={!!selectedLecture}
+                    lecture={selectedLecture}
+                    onClose={() => setSelectedLecture(null)}
+                />
+            )}
         </div>
     );
 }

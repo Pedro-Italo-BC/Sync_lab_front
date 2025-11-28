@@ -1,18 +1,18 @@
 "use client";
+export const dynamic = 'force-dynamic';
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
-const Input = (props: any) => <input {...props} />; 
-
-import { ArrowBack, Edit, Delete, Add, Save, Cancel, Sync, Image } from "@mui/icons-material";
+import { ArrowBack, Edit, Delete, Add, Save, Cancel, Sync } from "@mui/icons-material";
 import { api_url } from "@/utils/fetch-url";
 import { uploadImage } from "@/utils/uploadImage";
 import toast from "react-hot-toast";
 
-const API_BASE_URL = `${api_url}/api`;
+// Componente de Input simples tipado
+const Input = (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />;
 
 interface Equipment {
   id?: string;
@@ -39,11 +39,11 @@ interface Room {
 type Entity = Equipment | Room;
 type EntityType = 'equipment' | 'room';
 
-
 const EQUIPMENT_STATUS_OPTIONS = ["Available", "In Use", "Maintenance"] as const;
 const ROOM_STATUS_OPTIONS = ["FREE", "BUSY", "MAINTENANCE"] as const;
 const ROOM_TYPE_OPTIONS = ["LAB", "CLASSROOM", "MEETING_ROOM", "OFFICE", "AUDITORIUM", "OTHER"] as const;
 
+// Schemas Zod
 const equipmentSchema = z.object({
   name: z.string().min(3, { message: "O nome deve ter pelo menos 3 caracteres." }),
   quantity: z.number().min(1, { message: "A quantidade deve ser de pelo menos 1." }),
@@ -56,19 +56,13 @@ const equipmentSchema = z.object({
 const roomSchema = z.object({
   roomCode: z.string().min(2, { message: "O código da sala deve ter pelo menos 2 caracteres." }),
   capacity: z.number().min(1, { message: "A capacidade deve ser de pelo menos 1." }),
-
   roomType: z.enum(ROOM_TYPE_OPTIONS, { message: "O tipo de sala é obrigatório." }),
   code: z.string().min(2, { message: "O código é obrigatório." }),
-
   status: z.enum(ROOM_STATUS_OPTIONS, { message: "Status de sala inválido." }),
   imageUrl: z.string().optional(),
   buildingId: z.string().uuid({ message: "ID de Prédio inválido (UUID obrigatório)." }),
   floor: z.number().min(0, { message: "O andar não pode ser negativo." }),
 });
-
-type EquipmentFormData = z.infer<typeof equipmentSchema>;
-type RoomFormData = z.infer<typeof roomSchema>;
-type FormData = EquipmentFormData | RoomFormData; 
 
 export default function UnifiedEntityManagerPage() {
   const [entityType, setEntityType] = useState<EntityType>('equipment');
@@ -76,20 +70,23 @@ export default function UnifiedEntityManagerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingEntity, setEditingEntity] = useState<Entity | null>(null);
-  const [imageUrlFile, setImageUrlFile] = useState<File | null>(null); 
-  const [localImageUrl, setLocalImageUrl] = useState<string | null>(null); 
+  const [imageUrlFile, setImageUrlFile] = useState<File | null>(null);
+  const [localImageUrl, setLocalImageUrl] = useState<string | null>(null);
   const [buildings, setBuildings] = useState<{ id: string; buildCode: string; campus: string; floor: number }[]>([]);
+
+  // Movemos a definição da URL para dentro do componente para evitar erros no Module Scope se api_url for undefined
+  const API_BASE_URL = `${api_url}/api`;
 
   const { schema, defaultValues } = useMemo(() => {
     if (entityType === 'equipment') {
-      return { 
-        schema: equipmentSchema, 
-        defaultValues: { name: "", quantity: 1, status: EQUIPMENT_STATUS_OPTIONS[0], description: "", maxLoanDuration: 7, imageUrl: "" } 
+      return {
+        schema: equipmentSchema,
+        defaultValues: { name: "", quantity: 1, status: EQUIPMENT_STATUS_OPTIONS[0], description: "", maxLoanDuration: 7, imageUrl: "" }
       };
     } else {
-      return { 
-        schema: roomSchema, 
-        defaultValues: { roomCode: "", capacity: 1, roomType: ROOM_TYPE_OPTIONS[0], code: "", status: ROOM_STATUS_OPTIONS[0], imageUrl: "", buildingId: "", floor: 0 } 
+      return {
+        schema: roomSchema,
+        defaultValues: { roomCode: "", capacity: 1, roomType: ROOM_TYPE_OPTIONS[0], code: "", status: ROOM_STATUS_OPTIONS[0], imageUrl: "", buildingId: "", floor: 0 }
       };
     }
   }, [entityType]);
@@ -101,45 +98,45 @@ export default function UnifiedEntityManagerPage() {
     reset,
     getValues,
     watch
-  } = useForm<any>({ 
+  } = useForm<any>({
     resolver: zodResolver(schema),
     defaultValues: defaultValues,
   });
 
   const watchedImageUrl = watch('imageUrl');
 
+  // Buscar prédios apenas quando necessário
   useEffect(() => {
-  if (entityType === 'room') {
-    fetch(`${API_BASE_URL}/building`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: 'include'
-    })
-      .then(res => res.json())
-      .then(data => setBuildings(data))
-      .catch(err => console.error("Erro ao carregar prédios:", err));
-  }
-}, [entityType]);
+    if (entityType === 'room') {
+      fetch(`${API_BASE_URL}/building`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include'
+      })
+        .then(res => res.json())
+        .then(data => setBuildings(Array.isArray(data) ? data : []))
+        .catch(err => console.error("Erro ao carregar prédios:", err));
+    }
+  }, [entityType, API_BASE_URL]);
 
-
+  // Gerenciar preview da imagem
   useEffect(() => {
+    let url = null;
     if (imageUrlFile) {
-        setLocalImageUrl(URL.createObjectURL(imageUrlFile));
+      url = URL.createObjectURL(imageUrlFile);
+      setLocalImageUrl(url);
     } else if (watchedImageUrl) {
-        setLocalImageUrl(watchedImageUrl);
+      setLocalImageUrl(watchedImageUrl);
     } else if (editingEntity && editingEntity.imageUrl) {
-        setLocalImageUrl(editingEntity.imageUrl);
+      setLocalImageUrl(editingEntity.imageUrl);
     } else {
-        setLocalImageUrl(null);
+      setLocalImageUrl(null);
     }
 
     return () => {
-        if (imageUrlFile) {
-            URL.revokeObjectURL(localImageUrl || '');
-        }
+      if (url) URL.revokeObjectURL(url);
     };
   }, [imageUrlFile, watchedImageUrl, editingEntity]);
-
 
   const fetchEntities = useCallback(async (type: EntityType) => {
     setIsLoading(true);
@@ -161,7 +158,7 @@ export default function UnifiedEntityManagerPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [API_BASE_URL]);
 
   useEffect(() => {
     fetchEntities(entityType);
@@ -182,24 +179,23 @@ export default function UnifiedEntityManagerPage() {
     setImageUrlFile(null);
   };
 
-  const onSubmit = async (data: any) => { 
+  const onSubmit = async (data: any) => {
     const isEditing = editingEntity && editingEntity.id;
     const method = isEditing ? "PUT" : "POST";
     let finalImageUrl = data.imageUrl || "";
 
     if (imageUrlFile) {
-        try {
-            const url = await uploadImage(imageUrlFile)
-            finalImageUrl = url; 
-
-        } catch (e: any) {
-            toast.error(`Falha ao fazer upload da imagem: ${e.message}`);
-            return;
-        }
+      try {
+        const url = await uploadImage(imageUrlFile);
+        finalImageUrl = url;
+      } catch (e: any) {
+        toast.error(`Falha ao fazer upload da imagem: ${e.message}`);
+        return;
+      }
     }
 
     const url = isEditing ? `${API_BASE_URL}/${entityType}/${editingEntity.id}` : `${API_BASE_URL}/${entityType}`;
-    
+
     const dataToSend = {
       ...data,
       imageUrl: finalImageUrl,
@@ -209,6 +205,7 @@ export default function UnifiedEntityManagerPage() {
       maxLoanDuration: entityType === 'equipment' && data.maxLoanDuration ? Number(data.maxLoanDuration) : undefined,
     } as Entity;
 
+    // Limpeza de campos irrelevantes para o tipo
     if (entityType === 'equipment') {
       ['roomCode', 'capacity', 'roomType', 'code', 'buildingId', 'floor'].forEach(key => delete (dataToSend as any)[key]);
     } else {
@@ -225,7 +222,7 @@ export default function UnifiedEntityManagerPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(`Erro no servidor: ${errorData.erro || response.statusText}`);
+        throw new Error(errorData.erro || response.statusText);
       }
 
       toast.success(`${entityType === 'equipment' ? 'Equipamento' : 'Sala'} ${isEditing ? 'atualizado' : 'criado'} com sucesso!`);
@@ -250,7 +247,7 @@ export default function UnifiedEntityManagerPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(`Erro ao excluir: ${errorData.erro || response.statusText}`);
+        throw new Error(errorData.erro || response.statusText);
       }
 
       toast.success(`${entityType === 'equipment' ? 'Equipamento' : 'Sala'} excluído com sucesso!`);
@@ -294,72 +291,72 @@ export default function UnifiedEntityManagerPage() {
           </div>
         </>
       );
-    } else { 
+    } else {
       return (
         <>
           <div className="flex gap-4">
             <div className="flex-1">
-                <label className="block text-sm font-bold text-[var(--blue-50)] mb-1">Código Sala</label>
-                <Input className="w-full border-gray-300" placeholder="Ex: SALA101" {...register("roomCode")} />
-                {errors.roomCode && <p className="text-red-500 text-sm">{`${errors.roomCode.message}`}</p>}
+              <label className="block text-sm font-bold text-[var(--blue-50)] mb-1">Código Sala</label>
+              <Input className="w-full border-gray-300" placeholder="Ex: SALA101" {...register("roomCode")} />
+              {errors.roomCode && <p className="text-red-500 text-sm">{`${errors.roomCode.message}`}</p>}
             </div>
             <div className="flex-1">
-                <label className="block text-sm font-bold text-[var(--blue-50)] mb-1">Código Interno</label>
-                <Input className="w-full border-gray-300" placeholder="Ex: BLA-101" {...register("code")} />
-                {errors.code && <p className="text-red-500 text-sm">{`${errors.code.message}`}</p>}
+              <label className="block text-sm font-bold text-[var(--blue-50)] mb-1">Código Interno</label>
+              <Input className="w-full border-gray-300" placeholder="Ex: BLA-101" {...register("code")} />
+              {errors.code && <p className="text-red-500 text-sm">{`${errors.code.message}`}</p>}
             </div>
           </div>
           <div className="flex gap-4">
             <div className="flex-1">
-                <label className="block text-sm font-bold text-[var(--blue-50)] mb-1">Tipo de Sala</label>
-                <select {...register("roomType")} className="w-full border border-gray-300 rounded-lg p-2 focus:ring-[var(--blue-100)] focus:border-[var(--blue-100)] transition duration-150">
-                    {ROOM_TYPE_OPTIONS.map(type => (
-                        <option key={type} value={type}>
-                            {type.replace(/_/g, ' ').toUpperCase()}
-                        </option>
-                    ))}
-                </select>
-                {errors.roomType && <p className="text-red-500 text-sm">{`${errors.roomType.message}`}</p>}
+              <label className="block text-sm font-bold text-[var(--blue-50)] mb-1">Tipo de Sala</label>
+              <select {...register("roomType")} className="w-full border border-gray-300 rounded-lg p-2 focus:ring-[var(--blue-100)] focus:border-[var(--blue-100)] transition duration-150">
+                {ROOM_TYPE_OPTIONS.map(type => (
+                  <option key={type} value={type}>
+                    {type.replace(/_/g, ' ').toUpperCase()}
+                  </option>
+                ))}
+              </select>
+              {errors.roomType && <p className="text-red-500 text-sm">{`${errors.roomType.message}`}</p>}
             </div>
             <div className="flex-1">
-                <label className="block text-sm font-bold text-[var(--blue-50)] mb-1">Capacidade</label>
-                <Input className="w-full border-gray-300" placeholder="Ex: 40" type="number" min="1" {...register("capacity", { valueAsNumber: true })} />
-                {errors.capacity && <p className="text-red-500 text-sm">{`${errors.capacity.message}`}</p>}
+              <label className="block text-sm font-bold text-[var(--blue-50)] mb-1">Capacidade</label>
+              <Input className="w-full border-gray-300" placeholder="Ex: 40" type="number" min="1" {...register("capacity", { valueAsNumber: true })} />
+              {errors.capacity && <p className="text-red-500 text-sm">{`${errors.capacity.message}`}</p>}
             </div>
           </div>
           <div className="flex gap-4">
             <div className="flex-1">
-                <label className="block text-sm font-bold text-[var(--blue-50)] mb-1">Andar</label>
-                <Input className="w-full border-gray-300" placeholder="Ex: 1" type="number" {...register("floor", { valueAsNumber: true })} />
-                {errors.floor && <p className="text-red-500 text-sm">{`${errors.floor.message}`}</p>}
+              <label className="block text-sm font-bold text-[var(--blue-50)] mb-1">Andar</label>
+              <Input className="w-full border-gray-300" placeholder="Ex: 1" type="number" {...register("floor", { valueAsNumber: true })} />
+              {errors.floor && <p className="text-red-500 text-sm">{`${errors.floor.message}`}</p>}
             </div>
             <div className="flex-1">
-                <label className="block text-sm font-bold text-[var(--blue-50)] mb-1">Status</label>
-                <select {...register("status")} className="w-full border border-gray-300 rounded-lg p-2 focus:ring-[var(--blue-100)] focus:border-[var(--blue-100)] transition duration-150">
-                    {ROOM_STATUS_OPTIONS.map(status => (
-                        <option key={status} value={status}>
-                            {status === "FREE" ? "Livre" : status === "BUSY" ? "Ocupada" : "Manutenção"}
-                        </option>
-                    ))}
-                </select>
-                {errors.status && <p className="text-red-500 text-sm">{`${errors.status.message}`}</p>}
+              <label className="block text-sm font-bold text-[var(--blue-50)] mb-1">Status</label>
+              <select {...register("status")} className="w-full border border-gray-300 rounded-lg p-2 focus:ring-[var(--blue-100)] focus:border-[var(--blue-100)] transition duration-150">
+                {ROOM_STATUS_OPTIONS.map(status => (
+                  <option key={status} value={status}>
+                    {status === "FREE" ? "Livre" : status === "BUSY" ? "Ocupada" : "Manutenção"}
+                  </option>
+                ))}
+              </select>
+              {errors.status && <p className="text-red-500 text-sm">{`${errors.status.message}`}</p>}
             </div>
           </div>
-         <div>
-        <label className="block text-sm font-bold text-[var(--blue-50)] mb-1">Prédio</label>
-        <select
-          {...register("buildingId")}
-          className="w-full border border-gray-300 rounded-lg p-2 focus:ring-[var(--blue-100)] focus:border-[var(--blue-100)] transition duration-150"
-        >
-          <option value="">Selecione um prédio</option>
-          {buildings.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.buildCode} — {b.campus} (Andar: {b.floor})
-            </option>
-          ))}
-        </select>
-        {errors.buildingId && <p className="text-red-500 text-sm">{`${errors.buildingId.message}`}</p>}
-      </div>
+          <div>
+            <label className="block text-sm font-bold text-[var(--blue-50)] mb-1">Prédio</label>
+            <select
+              {...register("buildingId")}
+              className="w-full border border-gray-300 rounded-lg p-2 focus:ring-[var(--blue-100)] focus:border-[var(--blue-100)] transition duration-150"
+            >
+              <option value="">Selecione um prédio</option>
+              {buildings.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.buildCode} — {b.campus} (Andar: {b.floor})
+                </option>
+              ))}
+            </select>
+            {errors.buildingId && <p className="text-red-500 text-sm">{`${errors.buildingId.message}`}</p>}
+          </div>
         </>
       );
     }
@@ -384,11 +381,11 @@ export default function UnifiedEntityManagerPage() {
                 <tr key={equipment.id} className={`hover:bg-gray-100 ${editingEntity?.id === equipment.id ? "bg-yellow-100" : "bg-white"}`}>
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">{equipment.name}</td>
                   <td className="px-4 py-3 text-sm text-gray-500">{equipment.quantity}</td>
-                
+
                   <td className="px-4 py-3 text-sm text-gray-500">{equipment.maxLoanDuration || 'N/A'}</td>
                   <td className="px-4 py-3 text-center text-sm font-medium">
-                    <button onClick={() => handleEdit(equipment)} className="text-indigo-600 hover:text-indigo-900 mr-3" disabled={isSubmitting}><Edit fontSize="small"/></button>
-                    <button onClick={() => handleDelete(equipment.id!)} className="text-red-600 hover:text-red-900" disabled={isSubmitting}><Delete fontSize="small"/></button>
+                    <button onClick={() => handleEdit(equipment)} className="text-indigo-600 hover:text-indigo-900 mr-3" disabled={isSubmitting}><Edit fontSize="small" /></button>
+                    <button onClick={() => handleDelete(equipment.id!)} className="text-red-600 hover:text-red-900" disabled={isSubmitting}><Delete fontSize="small" /></button>
                   </td>
                 </tr>
               );
@@ -416,11 +413,11 @@ export default function UnifiedEntityManagerPage() {
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">{room.code}</td>
                   <td className="px-4 py-3 text-sm text-gray-500">{room.roomType}</td>
                   <td className="px-4 py-3 text-sm text-gray-500">{room.capacity}</td>
-                 
+
                   <td className="px-4 py-3 text-sm text-gray-500">{room.floor}</td>
                   <td className="px-4 py-3 text-center text-sm font-medium">
-                    <button onClick={() => handleEdit(room)} className="text-indigo-600 hover:text-indigo-900 mr-3" disabled={isSubmitting}><Edit fontSize="small"/></button>
-                    <button onClick={() => handleDelete(room.id!)} className="text-red-600 hover:text-red-900" disabled={isSubmitting}><Delete fontSize="small"/></button>
+                    <button onClick={() => handleEdit(room)} className="text-indigo-600 hover:text-indigo-900 mr-3" disabled={isSubmitting}><Edit fontSize="small" /></button>
+                    <button onClick={() => handleDelete(room.id!)} className="text-red-600 hover:text-red-900" disabled={isSubmitting}><Delete fontSize="small" /></button>
                   </td>
                 </tr>
               );
@@ -447,7 +444,7 @@ export default function UnifiedEntityManagerPage() {
             Gerenciador Unificado
           </p>
           <p className="text-sm text-gray-500 mb-4">
-            {editingEntity ? "Editando" : "Criando"} **{entityType === 'equipment' ? "Equipamento" : "Sala"}**
+            {editingEntity ? "Editando" : "Criando"} <strong>{entityType === 'equipment' ? "Equipamento" : "Sala"}</strong>
           </p>
 
           <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
@@ -455,9 +452,8 @@ export default function UnifiedEntityManagerPage() {
               type="button"
               onClick={() => setEntityType('equipment')}
               disabled={isSubmitting}
-              className={`flex-1 h-10 font-semibold rounded-md transition duration-200 ${
-                entityType === 'equipment' ? "bg-[var(--blue-100)] text-white shadow-md" : "text-gray-600 hover:bg-gray-200"
-              }`}
+              className={`flex-1 h-10 font-semibold rounded-md transition duration-200 ${entityType === 'equipment' ? "bg-[var(--blue-100)] text-white shadow-md" : "text-gray-600 hover:bg-gray-200"
+                }`}
             >
               Equipamento
             </button>
@@ -465,9 +461,8 @@ export default function UnifiedEntityManagerPage() {
               type="button"
               onClick={() => setEntityType('room')}
               disabled={isSubmitting}
-              className={`flex-1 h-10 font-semibold rounded-md transition duration-200 ${
-                entityType === 'room' ? "bg-[var(--blue-100)] text-white shadow-md" : "text-gray-600 hover:bg-gray-200"
-              }`}
+              className={`flex-1 h-10 font-semibold rounded-md transition duration-200 ${entityType === 'room' ? "bg-[var(--blue-100)] text-white shadow-md" : "text-gray-600 hover:bg-gray-200"
+                }`}
             >
               Sala
             </button>
@@ -478,67 +473,66 @@ export default function UnifiedEntityManagerPage() {
           <FormFields />
 
           <hr className="border-[var(--separator)] my-2" />
-          
+
           {entityType === 'equipment' && (
             <div>
-                <label className="block text-sm font-bold text-[var(--blue-50)] mb-1">Descrição</label>
-                <textarea className="w-full border border-gray-300 rounded-lg p-2 min-h-[80px] focus:ring-[var(--blue-100)] focus:border-[var(--blue-100)] transition duration-150" placeholder="Breve descrição do equipamento" {...register("description")} />
+              <label className="block text-sm font-bold text-[var(--blue-50)] mb-1">Descrição</label>
+              <textarea className="w-full border border-gray-300 rounded-lg p-2 min-h-[80px] focus:ring-[var(--blue-100)] focus:border-[var(--blue-100)] transition duration-150" placeholder="Breve descrição do equipamento" {...register("description")} />
             </div>
           )}
-          
+
           <div>
             <label className="block text-sm font-bold text-[var(--blue-50)] mb-1">URL da Imagem ou Upload Local</label>
             <div className="flex gap-2">
-                <Input 
-                    className="w-full border-gray-300" 
-                    placeholder="Cole um URL externo (http://...)" 
-                    {...register("imageUrl")} 
-                    disabled={!!imageUrlFile || isSubmitting}
-                />
-                
-                <label className={`w-36 h-10 flex items-center justify-center border rounded-lg cursor-pointer text-sm font-semibold transition ${
-                    imageUrlFile ? 'bg-green-500 text-white border-green-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              <Input
+                className="w-full border-gray-300"
+                placeholder="Cole um URL externo (http://...)"
+                {...register("imageUrl")}
+                disabled={!!imageUrlFile || isSubmitting}
+              />
+
+              <label className={`w-36 h-10 flex items-center justify-center border rounded-lg cursor-pointer text-sm font-semibold transition ${imageUrlFile ? 'bg-green-500 text-white border-green-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}>
-                    {imageUrlFile ? 'Arquivo Selecionado' : 'Upload Local'}
-                    <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                            const file = e.target.files?.[0] || null;
-                            setImageUrlFile(file);
-                            if(file) reset({ ...getValues(), imageUrl: "" }); 
-                        }}
-                        className="hidden"
-                        disabled={isSubmitting}
-                    />
-                </label>
+                {imageUrlFile ? 'Arquivo Selecionado' : 'Upload Local'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setImageUrlFile(file);
+                    if (file) reset({ ...getValues(), imageUrl: "" });
+                  }}
+                  className="hidden"
+                  disabled={isSubmitting}
+                />
+              </label>
             </div>
 
             {imageUrlFile && (
-                <p className="text-sm text-gray-600 mt-1 flex justify-between items-center bg-gray-50 p-2 rounded">
-                    <span>Arquivo: **{imageUrlFile.name}**</span>
-                    <button type="button" onClick={() => setImageUrlFile(null)} className="ml-2 text-red-500 hover:text-red-700 text-xs font-bold">
-                        (Remover)
-                    </button>
-                </p>
+              <p className="text-sm text-gray-600 mt-1 flex justify-between items-center bg-gray-50 p-2 rounded">
+                <span>Arquivo: <strong>{imageUrlFile.name}</strong></span>
+                <button type="button" onClick={() => setImageUrlFile(null)} className="ml-2 text-red-500 hover:text-red-700 text-xs font-bold">
+                  (Remover)
+                </button>
+              </p>
             )}
 
           </div>
 
           {localImageUrl && (
             <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-gray-50 flex flex-col items-center">
-                <label className="block text-sm font-bold text-[var(--blue-50)] mb-2">Pré-visualização</label>
-                <div className="w-full h-40 flex items-center justify-center bg-gray-200 rounded-md overflow-hidden">
-                    <img 
-                        src={localImageUrl} 
-                        alt="Pré-visualização da Imagem" 
-                        className="max-w-full max-h-full object-contain"
-                        onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                            e.currentTarget.parentElement!.innerHTML = '<div class="flex flex-col items-center justify-center h-full text-gray-500"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m0 0l-3-3m3 3l3-3m5 3l-3 3m3-3l-3 3m5-3v6m0-6l-3-3m3 3l3-3"></path></svg><p class="mt-2 text-sm">Não foi possível carregar a imagem ou a URL está inválida.</p></div>';
-                        }}
-                    />
-                </div>
+              <label className="block text-sm font-bold text-[var(--blue-50)] mb-2">Pré-visualização</label>
+              <div className="w-full h-40 flex items-center justify-center bg-gray-200 rounded-md overflow-hidden">
+                <img
+                  src={localImageUrl}
+                  alt="Pré-visualização da Imagem"
+                  className="max-w-full max-h-full object-contain"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.parentElement!.innerHTML = '<div class="flex flex-col items-center justify-center h-full text-gray-500"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m0 0l-3-3m3 3l3-3m5 3l-3 3m3-3l-3 3m5-3v6m0-6l-3-3m3 3l3-3"></path></svg><p class="mt-2 text-sm">Não foi possível carregar a imagem ou a URL está inválida.</p></div>';
+                  }}
+                />
+              </div>
             </div>
           )}
 
@@ -556,30 +550,29 @@ export default function UnifiedEntityManagerPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`flex-1 h-12 cursor-pointer rounded-lg text-white font-semibold transition flex items-center justify-center gap-2 shadow-md ${
-                editingEntity ? "bg-green-500 hover:bg-green-600" : "bg-[var(--blue-100)] hover:bg-blue-600"
-              }`}
+              className={`flex-1 h-12 cursor-pointer rounded-lg text-white font-semibold transition flex items-center justify-center gap-2 shadow-md ${editingEntity ? "bg-green-500 hover:bg-green-600" : "bg-[var(--blue-100)] hover:bg-blue-600"
+                }`}
             >
               {isSubmitting ? "Salvando..." : editingEntity ? <><Save /> Atualizar</> : <><Add /> Cadastrar</>}
             </button>
           </div>
         </form>
-        
+
         <Link href="/admin" className="bg-[var(--foreground)] w-full flex justify-center items-center h-12 rounded-lg hover:bg-gray-100 text-gray-700 font-semibold cursor-pointer duration-300 transition shadow-md">
-            <ArrowBack className="mr-2" /> Voltar para o Admin
+          <ArrowBack className="mr-2" /> Voltar para o Admin
         </Link>
       </aside>
 
       <main className="bg-[var(--foreground)] flex-1 h-full rounded-lg p-6 shadow-md overflow-x-auto">
         <div className="flex justify-between items-center mb-4 border-b pb-4">
-            <h2 className="text-2xl font-bold text-[var(--blue-50)]">Lista de {entityType === 'equipment' ? 'Equipamentos' : 'Salas'}</h2>
-            <button onClick={() => fetchEntities(entityType)} className="text-[var(--blue-100)] hover:text-indigo-900 p-2 rounded-full hover:bg-gray-100 transition" title="Recarregar Lista">
-                <Sync />
-            </button>
+          <h2 className="text-2xl font-bold text-[var(--blue-50)]">Lista de {entityType === 'equipment' ? 'Equipamentos' : 'Salas'}</h2>
+          <button onClick={() => fetchEntities(entityType)} className="text-[var(--blue-100)] hover:text-indigo-900 p-2 rounded-full hover:bg-gray-100 transition" title="Recarregar Lista">
+            <Sync />
+          </button>
         </div>
-        
+
         {error ? (
-            <p className="text-red-700 p-4 border border-red-300 bg-red-100 rounded font-semibold">{error}</p>
+          <p className="text-red-700 p-4 border border-red-300 bg-red-100 rounded font-semibold">{error}</p>
         ) : currentList.length === 0 ? (
           <div className="text-center py-10">
             <p className="text-xl text-gray-500">Nenhum(a) {entityType} cadastrado(a).</p>
