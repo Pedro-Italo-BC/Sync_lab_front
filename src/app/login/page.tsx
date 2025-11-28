@@ -49,7 +49,7 @@ export default function Login() {
                 })
             })
 
-            const user = jwtUtils.getSub;
+            const user = jwtUtils.getSub();
             
             if (res.ok && !!user) {
                 toast.success("Logado com sucesso")  

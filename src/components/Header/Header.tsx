@@ -1,3 +1,4 @@
+"use client"
 import Image from 'next/image'
 import SyncLabLogo from '../../../public/Logo.png'
 import { SearchBar } from '../SearchBar/SearchBar'
