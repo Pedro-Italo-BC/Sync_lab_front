@@ -26,6 +26,7 @@ export default function Login() {
         mode: "onChange",
         reValidateMode: "onChange"
     })
+    const [test, setTest] = useState(false)
 
     const [isLoading, setIsLoading] = useState<boolean>(false)
 
@@ -47,11 +48,9 @@ export default function Login() {
                 })
             })
 
-            const datas = await res.json();
-
             if (res.ok) {
                 toast.success("Logado com sucesso")  
-                router.push('/home')
+                setTest(true);
             } else {
                 toast.error("Email ou senha incorreta")
             }
@@ -60,6 +59,9 @@ export default function Login() {
             console.error(err)
         } finally {
             setIsLoading(false)
+            if(test){
+                router.push('/home')
+            }
         }
     }
 

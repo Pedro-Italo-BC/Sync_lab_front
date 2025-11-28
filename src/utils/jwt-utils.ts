@@ -26,12 +26,13 @@ export function deleteTokenCookies() {
   Cookies.remove(REFRESH_TOKEN_KEY)
 }
 
-export function getPayload(token: string | null | undefined): CustomJwtPayload | null {
-  if (!token) return null
-  try {
-    return jwtDecode<CustomJwtPayload>(token)
-  } catch (e) {
-    return null
+export function getPayload(token: string | null | undefined): CustomJwtPayload | void {
+  if (token) {
+    try {
+      return jwtDecode<CustomJwtPayload>(token)
+    } catch (e) {
+      console.error(e)
+    }
   }
 }
 
@@ -48,7 +49,7 @@ export function isLoggedIn(): boolean {
   return !!token && !isTokenExpired(token)
 }
 
-export function getCurrentPayload(kind: TokenKind = 'access'): CustomJwtPayload | null {
+export function getCurrentPayload(kind: TokenKind = 'access'): CustomJwtPayload | void{
   const token = getToken(kind)
   return getPayload(token)
 }
