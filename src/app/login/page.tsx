@@ -90,12 +90,6 @@ export default function Login() {
 
                         <Button title='Entrar' buttonStyle='PRIMARY' disabled={isLoading}/>
 
-                        <Button title='asasntrar' onClick={() => {
-            const user = jwtUtils.getSub;
-                            
-                            
-                            alert(user)
-                        }} buttonStyle='PRIMARY' disabled={isLoading}/>
                     </form>
                 </div>
             </section>
