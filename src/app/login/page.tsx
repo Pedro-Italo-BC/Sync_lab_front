@@ -64,7 +64,11 @@ export default function Login() {
         document.cookie = `access_token=${accessToken}; path=/; max-age=86400`;
         document.cookie = `refresh_token=${refreshToken}; path=/; max-age=604800`;
 
-        router.push('/home');
+        localStorage.setItem("access_token", `${accessToken}`);
+        localStorage.setItem("refresh_token", `${accessToken}`);
+
+
+        // router.push('/home');
     } else {
         toast.error("Email ou senha incorreta");
     }
