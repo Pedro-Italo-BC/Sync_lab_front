@@ -16,7 +16,9 @@ interface CustomJwtPayload extends Omit<JwtPayload, 'sub'> {
 
 export function getToken(kind: TokenKind = 'access'): string | undefined {
   const key = kind === 'access' ? ACCESS_TOKEN_KEY : REFRESH_TOKEN_KEY
-  return Cookies.get(key)
+
+  const aa = Cookies.get(key) 
+  return aa
 }
 
 export function deleteTokenCookies() {

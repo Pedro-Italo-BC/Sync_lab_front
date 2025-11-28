@@ -44,6 +44,7 @@ export default function Home() {
           fetch(`${api_url}/api/lectures`, {
             headers: { "Content-Type": "application/json" },
             credentials: "include",
+
           }),
         ])
 
