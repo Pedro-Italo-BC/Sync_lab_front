@@ -14,7 +14,13 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { api_url } from '@/utils/fetch-url';
 import Cookies from 'js-cookie'
+import axios from 'axios'; // Importa o Axios
+
 const BASE_URL = `${api_url}/auth`
+
+// Configuração global do Axios para incluir cookies em todas as requisições
+axios.defaults.baseURL = api_url;
+axios.defaults.withCredentials = true;
 
 const loginFormSchema = z.object({
     email: z.email({ message: "Email inválido" }),
@@ -36,48 +42,58 @@ export default function Login() {
 
     async function onSubmit(data: loginFormData) {
         setIsLoading(true)
-            console.log(isLoading)
-    try {
-    const res = await fetch(`${BASE_URL}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-            credential: {
-                email: data.email,
-                password: data.password
+        console.log(isLoading)
+        try {
+            const body = {
+                credential: {
+                    email: data.email,
+                    password: data.password
+                }
+            };
+            
+            // Usando Axios para a requisição de login
+            const res = await axios.post(`${BASE_URL}/login`, body, {
+                headers: { 'Content-Type': 'application/json' },
+            });
+            
+            // Axios retorna o JSON em .data
+            const dataRes = res.data; 
+
+            toast.success("Logado com sucesso");
+
+            // Manter a lógica de extração de token original, assumindo que
+            // o backend ainda retorna as strings com Path, Max-Age, etc.
+            // conforme a estrutura que você estava processando.
+            const accessRaw = dataRes.token.access_token;
+            const refreshRaw = dataRes.token.refresh_token;
+
+            const accessToken = accessRaw.split("=")[1].split(";")[0];
+            const refreshToken = refreshRaw.split("=")[1].split(";")[0];
+
+            // A definição dos cookies via document.cookie é menos segura (não httpOnly), 
+            // mas é a lógica original que você estava usando para compatibilidade.
+            // Nota: O ideal é que o Set-Cookie do backend defina o cookie httpOnly.
+            document.cookie = `access_token=${accessToken}; path=/; max-age=86400; Secure; SameSite=None`;
+            document.cookie = `refresh_token=${refreshToken}; path=/; max-age=604800; Secure; SameSite=None`;
+
+            localStorage.setItem("access_token", `${accessToken}`);
+            localStorage.setItem("refresh_token", `${refreshToken}`);
+
+            console.log(Cookies.get('access_token'))
+
+
+            router.push('/home');
+
+        } catch (err) {
+            // O Axios lança um erro se o status for 4xx/5xx
+            if (axios.isAxiosError(err) && err.response) {
+                // Tentativa de ler a mensagem de erro do corpo da resposta do backend
+                const errorMessage = err.response.data.erro || err.response.data.message;
+                toast.error(errorMessage || "Email ou senha incorreta");
+            } else {
+                toast.error("Algo deu errado")
+                console.error(err)
             }
-        })
-    });
-
-    const dataRes = await res.json();
-
-    if (res.ok) {
-        toast.success("Logado com sucesso");
-
-        const accessRaw = dataRes.token.access_token;
-        const refreshRaw = dataRes.token.refresh_token;
-
-        const accessToken = accessRaw.split("=")[1].split(";")[0];
-        const refreshToken = refreshRaw.split("=")[1].split(";")[0];
-
-        document.cookie = `access_token=${accessToken}; path=/; max-age=86400`;
-        document.cookie = `refresh_token=${refreshToken}; path=/; max-age=604800`;
-
-        localStorage.setItem("access_token", `${accessToken}`);
-        localStorage.setItem("refresh_token", `${accessToken}`);
-
-        console.log(Cookies.get('access_token'))
-
-
-        // router.push('/home');
-    } else {
-        toast.error("Email ou senha incorreta");
-    }
-
-    } catch (err) {
-            toast.error("Algo deu errado")
-            console.error(err)
         } finally {
             setIsLoading(false)
         }

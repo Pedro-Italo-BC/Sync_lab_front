@@ -53,28 +53,22 @@ export function Avatar() {
 
     useEffect(() => {
         async function fetchUserData() {
-            // Se você está lendo o token do Cookie (que é o que está no seu código),
-            // você deve continuar a usá-lo para montar o cabeçalho Authorization.
             const c = Cookies.get('access_token');
             if (!c) {
-                // Se não há token, pode ser um usuário deslogado ou expirado.
                 setIsLoading(false);
                 return;
             }
 
             try {
-                // 💡 REQUISIÇÃO COM AXIOS
                 const response = await axios.get(PERSON_URL + "/" + jwtUtils.getSub(), {
-                    // O withCredentials já está globalmente true, mas o headers é necessário
                     headers: { 
                         'Content-Type': 'application/json', 
-                        // Enviamos o token no header para que o AuthMiddleware no backend possa lê-lo (Opção 1)
                         "Authorization": `Bearer ${c}` 
                     },
                     withCredentials: true
                 });
 
-                const data: PersonData = response.data; // Axios retorna o JSON diretamente em .data
+                const data: PersonData = response.data; 
                 console.log("User> ", data)
 
                 if (data != null) {
@@ -91,12 +85,10 @@ export function Avatar() {
                 }
             } catch (error) {
                 console.error("Erro ao carregar dados do usuário:", error);
-                // 💡 Tratamento de erro Axios: use error.response
                 const errorMessage = axios.isAxiosError(error) && error.response 
                     ? error.response.data.erro || `Falha HTTP: ${error.response.status}`
                     : "Erro desconhecido";
                 
-                // Exibe um erro amigável ao usuário
                 toast.error(`Sessão expirada ou falha ao carregar usuário: ${errorMessage}`); 
                 
                 setUser({
@@ -115,14 +107,10 @@ export function Avatar() {
     async function handleLogout() {
         setOpen(false);
         try {
-            // 💡 REQUISIÇÃO DE LOGOUT COM AXIOS
-            // O withCredentials garante que os cookies de 'access_token' e 'refresh_token'
-            // serão enviados, permitindo que o backend os remova.
             const response = await axios.post(LOGOUT_URL, null, {
                 headers: { 'Content-Type': 'application/json' },
             });
             
-            // Axios lança um erro para status 4xx/5xx, então só chegamos aqui se for 2xx.
             toast.success("Logout realizado com sucesso!");
             router.push("/login");
 
