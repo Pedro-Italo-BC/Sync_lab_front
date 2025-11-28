@@ -8,11 +8,17 @@ import jwtUtils from "@/utils/jwt-utils";
 import toast from "react-hot-toast";
 import { validadeImage } from "@/utils/validade_image";
 import Cookies from "js-cookie";
+import axios from "axios"; // 💡 Importamos o Axios
 
 const API_BASE_URL = `${api_url}/api`;
 const LOGOUT_URL = `${api_url}/auth/logout`;
 const PERSON_URL = `${API_BASE_URL}/person`;
 const DEFAULT_IMAGE = "/avatar.png";
+
+// 💡 Configuração global do Axios
+// Isso garante que ele sempre usará a base URL e incluirá cookies em todas as requisições
+axios.defaults.baseURL = api_url; // Ajuste para a URL base da API
+axios.defaults.withCredentials = true; // ESSENCIAL para enviar cookies
 
 type PersonData = {
     id: string;
@@ -47,20 +53,30 @@ export function Avatar() {
 
     useEffect(() => {
         async function fetchUserData() {
-        const c = Cookies.get('access_token')
+            // Se você está lendo o token do Cookie (que é o que está no seu código),
+            // você deve continuar a usá-lo para montar o cabeçalho Authorization.
+            const c = Cookies.get('access_token');
+            if (!c) {
+                // Se não há token, pode ser um usuário deslogado ou expirado.
+                setIsLoading(false);
+                return;
+            }
 
             try {
-                const response = await fetch(PERSON_URL + "/" + jwtUtils.getSub(), {
-                    headers: { 'Content-Type': 'application/json', "Authorization": `Bearer ${c}` },
-                    credentials: 'include'
+                // 💡 REQUISIÇÃO COM AXIOS
+                const response = await axios.get(PERSON_URL + "/" + jwtUtils.getSub(), {
+                    // O withCredentials já está globalmente true, mas o headers é necessário
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        // Enviamos o token no header para que o AuthMiddleware no backend possa lê-lo (Opção 1)
+                        "Authorization": `Bearer ${c}` 
+                    },
+                    withCredentials: true
                 });
-                if (!response.ok) {
-                    throw new Error("Falha ao buscar dados da pessoa.");
-                }
-                const data: PersonData = await response.json();
+
+                const data: PersonData = response.data; // Axios retorna o JSON diretamente em .data
                 console.log("User> ", data)
 
-                console.log(data)
                 if (data != null) {
                     const loggedInUser = data;
                     const emailMock = loggedInUser.name.toLowerCase().replace(/\s/g, '.') + "@email.com";
@@ -75,6 +91,14 @@ export function Avatar() {
                 }
             } catch (error) {
                 console.error("Erro ao carregar dados do usuário:", error);
+                // 💡 Tratamento de erro Axios: use error.response
+                const errorMessage = axios.isAxiosError(error) && error.response 
+                    ? error.response.data.erro || `Falha HTTP: ${error.response.status}`
+                    : "Erro desconhecido";
+                
+                // Exibe um erro amigável ao usuário
+                toast.error(`Sessão expirada ou falha ao carregar usuário: ${errorMessage}`); 
+                
                 setUser({
                     name: "Usuário Desconectado",
                     email: "erro@email.com",
@@ -91,22 +115,26 @@ export function Avatar() {
     async function handleLogout() {
         setOpen(false);
         try {
-            const response = await fetch(LOGOUT_URL, {
-                method: 'POST',
+            // 💡 REQUISIÇÃO DE LOGOUT COM AXIOS
+            // O withCredentials garante que os cookies de 'access_token' e 'refresh_token'
+            // serão enviados, permitindo que o backend os remova.
+            const response = await axios.post(LOGOUT_URL, null, {
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include'
             });
+            
+            // Axios lança um erro para status 4xx/5xx, então só chegamos aqui se for 2xx.
+            toast.success("Logout realizado com sucesso!");
+            router.push("/login");
 
-            if (response.ok) {
-                router.push("/login");
-            } else {
-                const errorBody = await response.json().catch(() => ({}));
-                const errorMessage = errorBody.erro || `Falha HTTP: ${response.status}`;
-                throw new Error(errorMessage);
-            }
-        } catch (error: any) {
+        } catch (error) {
             console.error("Erro durante o logout:", error);
-            toast.error(`Falha ao realizar logout: ${error.message}. Tente novamente.`);
+            
+            // 💡 Tratamento de erro Axios
+            const errorMessage = axios.isAxiosError(error) && error.response 
+                ? error.response.data.erro || `Falha HTTP: ${error.response.status}`
+                : "Erro desconhecido";
+            
+            toast.error(`Falha ao realizar logout: ${errorMessage}. Tente novamente.`);
         }
     }
 
@@ -160,6 +188,7 @@ export function Avatar() {
                         {renderAvatarImage('large')}
                         <div>
                             <p className="font-semibold text-gray-900 truncate">{user.name}</p>
+                            <p className="text-sm text-gray-500 truncate">{user.email}</p>
                         </div>
                     </div>
 
