@@ -6,19 +6,11 @@ import Person from "@mui/icons-material/Person";
 import { api_url } from "@/utils/fetch-url";
 import jwtUtils from "@/utils/jwt-utils";
 import toast from "react-hot-toast";
-import { validadeImage } from "@/utils/validade_image";
-import Cookies from "js-cookie";
-import axios from "axios"; // 💡 Importamos o Axios
 
-const API_BASE_URL = `${api_url}/api`;
-const LOGOUT_URL = `${api_url}/auth/logout`;
-const PERSON_URL = `${API_BASE_URL}/person`;
-const DEFAULT_IMAGE = "/avatar.png";
-
-// 💡 Configuração global do Axios
-// Isso garante que ele sempre usará a base URL e incluirá cookies em todas as requisições
-axios.defaults.baseURL = api_url; // Ajuste para a URL base da API
-axios.defaults.withCredentials = true; // ESSENCIAL para enviar cookies
+const API_BASE_URL = `${api_url}/api`; 
+const LOGOUT_URL = `${api_url}/auth/logout`; 
+const PERSON_URL = `${API_BASE_URL}/api/person`; 
+const DEFAULT_IMAGE = "https://via.placeholder.com/100"; 
 
 type PersonData = {
     id: string;
@@ -32,65 +24,56 @@ type PersonData = {
     role: 'ADMIN' | 'PROFESSOR' | 'STUDENT' | string;
 };
 
-type UserState = {
-    name: string;
-    email: string;
-    image: string;
+type UserState = { 
+    name: string; 
+    email: string; 
+    image: string; 
+} | null;
+
+type AvatarProps = {
+    src?: string
 };
 
-export function Avatar() {
+export function Avatar({ src }: AvatarProps) {
     const [open, setOpen] = useState(false);
-    const [user, setUser] = useState<UserState>({} as UserState) ;
+    const [user, setUser] = useState<UserState>(null);
     const [isLoading, setIsLoading] = useState(true);
     const router = useRouter();
 
-    async function verifyImage(url: string) {
-        const response = await validadeImage(DEFAULT_IMAGE, url);
-        setUser(user => {
-            return {...user, image: response}
-        })
-    }
-
     useEffect(() => {
         async function fetchUserData() {
-            const c = Cookies.get('access_token');
-            if (!c) {
-                setIsLoading(false);
-                return;
-            }
-
             try {
-                const response = await axios.get(PERSON_URL + "/" + jwtUtils.getSub(), {
-                    headers: { 
-                        'Content-Type': 'application/json', 
-                        "Authorization": `Bearer ${c}` 
-                    },
-                    withCredentials: true
+                
+                const response = await fetch(PERSON_URL +"/" + jwtUtils.getSub(), { 
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include'
                 });
 
-                const data: PersonData = response.data; 
-                console.log("User> ", data)
-
+                
+                if (!response.ok) {
+                    throw new Error("Falha ao buscar dados da pessoa.");
+                }
+                const data: PersonData = await response.json();
+                console.log("User> ",data)
+                
+                console.log(data)
                 if (data != null) {
-                    const loggedInUser = data;
+                    const loggedInUser = data; 
+                    
                     const emailMock = loggedInUser.name.toLowerCase().replace(/\s/g, '.') + "@email.com";
                     
+                    const profileImage = (loggedInUser.profileUrl && loggedInUser.profileUrl !== "") 
+                        ? loggedInUser.profileUrl 
+                        : DEFAULT_IMAGE;
+
                     setUser({
                         name: loggedInUser.name,
                         email: emailMock,
-                        image: DEFAULT_IMAGE
+                        image: profileImage
                     });
-
-                    verifyImage(loggedInUser.profileUrl);
                 }
             } catch (error) {
                 console.error("Erro ao carregar dados do usuário:", error);
-                const errorMessage = axios.isAxiosError(error) && error.response 
-                    ? error.response.data.erro || `Falha HTTP: ${error.response.status}`
-                    : "Erro desconhecido";
-                
-                toast.error(`Sessão expirada ou falha ao carregar usuário: ${errorMessage}`); 
-                
                 setUser({
                     name: "Usuário Desconectado",
                     email: "erro@email.com",
@@ -107,22 +90,22 @@ export function Avatar() {
     async function handleLogout() {
         setOpen(false);
         try {
-            const response = await axios.post(LOGOUT_URL, null, {
+            const response = await fetch(LOGOUT_URL, {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
             });
-            
-            toast.success("Logout realizado com sucesso!");
-            router.push("/login");
 
-        } catch (error) {
+            if (response.ok) {
+                router.push("/login"); 
+            } else {
+                const errorBody = await response.json().catch(() => ({}));
+                const errorMessage = errorBody.erro || `Falha HTTP: ${response.status}`;
+                throw new Error(errorMessage);
+            }
+        } catch (error: any) {
             console.error("Erro durante o logout:", error);
-            
-            // 💡 Tratamento de erro Axios
-            const errorMessage = axios.isAxiosError(error) && error.response 
-                ? error.response.data.erro || `Falha HTTP: ${error.response.status}`
-                : "Erro desconhecido";
-            
-            toast.error(`Falha ao realizar logout: ${errorMessage}. Tente novamente.`);
+            toast.error(`Falha ao realizar logout: ${error.message}. Tente novamente.`);
         }
     }
 
@@ -146,7 +129,7 @@ export function Avatar() {
                 src={user!.image}
                 alt="Avatar"
                 // object-cover garante que a imagem preenche o círculo sem distorção
-                className={`${widthHeight} rounded-full object-cover`}
+                className={`${widthHeight} rounded-full object-cover`} 
             />
         );
     };
@@ -176,7 +159,6 @@ export function Avatar() {
                         {renderAvatarImage('large')}
                         <div>
                             <p className="font-semibold text-gray-900 truncate">{user.name}</p>
-                            <p className="text-sm text-gray-500 truncate">{user.email}</p>
                         </div>
                     </div>
 
