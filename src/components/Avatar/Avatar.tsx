@@ -9,7 +9,7 @@ import toast from "react-hot-toast";
 
 const API_BASE_URL = `${api_url}/api`; 
 const LOGOUT_URL = `${api_url}/auth/logout`; 
-const PERSON_URL = `${API_BASE_URL}/api/person`; 
+const PERSON_URL = `${API_BASE_URL}/person`; 
 const DEFAULT_IMAGE = "https://via.placeholder.com/100"; 
 
 type PersonData = {
@@ -38,9 +38,15 @@ export function Avatar({ src }: AvatarProps) {
     const [open, setOpen] = useState(false);
     const [user, setUser] = useState<UserState>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [userId, setUserId] = useState('')
     const router = useRouter();
 
     useEffect(() => {
+        while(!userId){
+            setUserId(JSON.stringify(jwtUtils.getSub() ? jwtUtils.getSub() : ''))
+        }
+
+
         async function fetchUserData() {
             try {
                 
@@ -84,7 +90,7 @@ export function Avatar({ src }: AvatarProps) {
             }
         }
         fetchUserData();
-    }, []);
+    }, [userId]);
 
 
     async function handleLogout() {
