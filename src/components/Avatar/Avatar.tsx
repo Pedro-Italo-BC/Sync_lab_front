@@ -7,6 +7,7 @@ import { api_url } from "@/utils/fetch-url";
 import jwtUtils from "@/utils/jwt-utils";
 import toast from "react-hot-toast";
 import { validadeImage } from "@/utils/validade_image";
+import Cookies from "js-cookie";
 
 const API_BASE_URL = `${api_url}/api`;
 const LOGOUT_URL = `${api_url}/auth/logout`;
@@ -46,9 +47,11 @@ export function Avatar() {
 
     useEffect(() => {
         async function fetchUserData() {
+        const c = Cookies.get('access_token')
+
             try {
                 const response = await fetch(PERSON_URL + "/" + jwtUtils.getSub(), {
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', "Authorization": `Bearer ${c}` },
                     credentials: 'include'
                 });
                 if (!response.ok) {

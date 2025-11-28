@@ -7,6 +7,8 @@ import Link from "next/link";
 import { ArrowBack } from "@mui/icons-material";
 import { api_url } from "@/utils/fetch-url";
 import noImage from '../../../../../public/user-img.png'
+
+import Cookies from "js-cookie";
 import {
   Dialog,
   Box,
@@ -77,9 +79,11 @@ export default function UsersPage() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
+        const c = Cookies.get('access_token')
+
         const res = await fetch(`${api_url}/api/person`, {
           method: "GET",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${c}`},
           credentials: "include",
         });
         if (!res.ok) throw new Error("Erro ao buscar usuários");

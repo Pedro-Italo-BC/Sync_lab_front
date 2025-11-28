@@ -9,6 +9,7 @@ import { ArrowBack, Edit, Delete, Add, Save, Cancel, Sync } from "@mui/icons-mat
 import { api_url } from "@/utils/fetch-url";
 import toast from "react-hot-toast";
 const API_BASE_URL = `${api_url}/api`;
+import Cookies from "js-cookie";
 
 interface Professor {
   id: string;
@@ -137,9 +138,11 @@ export default function UnifiedEntityManagerPage() {
 
 
   async function fetchCourses() {
+    const c = Cookies.get('access_token')
+
     try {
       const resp = await fetch(`${api_url}/api/course`, {
-        headers: {"Content-Type": 'application/json'},
+        headers: {"Content-Type": 'application/json', "Authorization": `Bearer ${c}`},
         credentials: 'include'
       })
 
@@ -254,8 +257,10 @@ function formatTime(dateStr: string) {
   const fetchEntities = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    const c = Cookies.get('access_token')
+
     try {
-      const response = await fetch(`${API_BASE_URL}/lectures`, { method: "GET", headers: { "Content-Type": "application/json" }, credentials: 'include' });
+      const response = await fetch(`${API_BASE_URL}/lectures`, { method: "GET", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${c}`}, credentials: 'include' });
       if (!response.ok) throw new Error(response.statusText || 'Erro ao buscar aulas');
       const data: Lecture[] = await response.json();
       setCurrentList(data || []);
@@ -335,10 +340,11 @@ const onSubmit = async (data: LectureFormData) => {
     const url = isUpdating ? `${API_BASE_URL}/lectures/${editingEntity?.id}` : `${API_BASE_URL}/lectures`;
     const method = isUpdating ? "PUT" : "POST";
 
+    const c = Cookies.get('access_token')
 
     const response = await fetch(url, {
       method: method,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json","Authorization": `Bearer ${c}` },
       body: JSON.stringify(payload),
       credentials: 'include'
     });
@@ -363,8 +369,10 @@ const onSubmit = async (data: LectureFormData) => {
 };
   const handleDelete = async (id: string) => {
     if (!window.confirm("Tem certeza que deseja excluir esta aula?")) return;
+    const c = Cookies.get('access_token')
+
     try {
-      const response = await fetch(`${API_BASE_URL}/lectures/${id}`, { method: "DELETE", headers: { "Content-Type": "application/json" }, credentials: 'include' });
+      const response = await fetch(`${API_BASE_URL}/lectures/${id}`, { method: "DELETE", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${c}` }, credentials: 'include' });
       if (!response.ok) {
         let errText = response.statusText;
         try { const errJson = await response.json(); errText = errJson.erro || JSON.stringify(errJson); } catch {}

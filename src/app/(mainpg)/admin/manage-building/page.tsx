@@ -8,6 +8,7 @@ import * as z from "zod";
 import { Add, ArrowBack, Cancel, Delete, Edit, Save, Sync } from "@mui/icons-material";
 import { api_url } from "@/utils/fetch-url";
 import toast from "react-hot-toast";
+import Cookies from "js-cookie";
 
 const API_BASE_URL = `${api_url}/api`;
 
@@ -54,10 +55,13 @@ export default function BuildingManagerPage() {
   const fetchBuildings = useCallback(async () => {
     setLoading(true);
     setError(null);
+
+    const c = Cookies.get('access_token')
+    
     try {
       const res = await fetch(`${API_BASE_URL}/building`, {
         method: "GET",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${c}` },
         credentials: "include",
       });
       if (!res.ok) throw new Error("Erro ao buscar prédios");
@@ -84,11 +88,12 @@ export default function BuildingManagerPage() {
     const url = isEditing
       ? `${API_BASE_URL}/building/${editing?.id}`
       : `${API_BASE_URL}/building`;
+    const c = Cookies.get('access_token')
 
     try {
       const res = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${c}` },
         credentials: "include",
         body: JSON.stringify(data),
       });
@@ -110,10 +115,12 @@ export default function BuildingManagerPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este prédio?")) return;
+    const c = Cookies.get('access_token')
+
     try {
       const res = await fetch(`${API_BASE_URL}/building/${id}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${c}` },
         credentials: "include",
       });
       if (!res.ok) throw new Error("Erro ao excluir");
