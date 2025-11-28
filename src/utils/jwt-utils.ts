@@ -55,13 +55,12 @@ export function getCurrentPayload(kind: TokenKind = 'access'): CustomJwtPayload 
 }
 
 export function getSub(): string | number | null {
-  const payload = getCurrentPayload('access')
-  return payload?.sub ?? payload?.id ?? null
+  // const payload = getCurrentPayload('access')
+  return localStorage.getItem('id');
 }
 
 export function getRole(): string | string[] | null {
-  const payload = getCurrentPayload('access')
-  return payload?.role ?? payload?.roles ?? payload?.authorities ?? null
+  return localStorage.getItem('role');
 }
 
 export function attachAuthHeader(init: RequestInit = {}): RequestInit {

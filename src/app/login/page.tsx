@@ -48,10 +48,8 @@ export default function Login() {
                     }
                 })
             })
-
-            const user = jwtUtils.getSub();
             
-            if (res.ok && !!user) {
+            if (res.ok) {
                 toast.success("Logado com sucesso")  
                 setTest(true);
             } else {

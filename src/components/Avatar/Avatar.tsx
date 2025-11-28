@@ -56,6 +56,9 @@ export function Avatar({ src }: AvatarProps) {
                 }
                 const data: PersonData = await response.json();
                 console.log("User> ",data)
+
+                localStorage.setItem("id", JSON.stringify(data.id));
+                localStorage.setItem("role", JSON.stringify(data.role));
                 
                 console.log(data)
                 if (data != null) {
