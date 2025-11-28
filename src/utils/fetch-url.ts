@@ -1,2 +1,2 @@
-const api_url = "https://synclab-production.up.railway.app"
+const api_url = "http://localhost:8082"
 export {api_url}
