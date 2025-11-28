@@ -46,11 +46,12 @@ export function Avatar({ src }: AvatarProps) {
             setUserId(JSON.stringify(jwtUtils.getSub() ? jwtUtils.getSub() : ''))
         }
 
+        console.log(userId)
 
         async function fetchUserData() {
             try {
                 
-                const response = await fetch(PERSON_URL +"/" + jwtUtils.getSub(), { 
+                const response = await fetch(PERSON_URL +"/" + userId, { 
                             headers: { 'Content-Type': 'application/json' },
                             credentials: 'include'
                 });
