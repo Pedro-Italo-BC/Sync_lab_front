@@ -55,6 +55,10 @@ export default function Login() {
             } else {
                 toast.error("Email ou senha incorreta")
             }
+
+            const dataRes = await res;
+
+            console.log(dataRes)
         } catch (err) {
             toast.error("Algo deu errado")
             console.error(err)
