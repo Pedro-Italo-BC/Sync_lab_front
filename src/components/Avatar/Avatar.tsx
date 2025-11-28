@@ -42,12 +42,6 @@ export function Avatar({ src }: AvatarProps) {
     const router = useRouter();
 
     useEffect(() => {
-        while(!userId){
-            setUserId(JSON.stringify(jwtUtils.getSub() ? jwtUtils.getSub() : ''))
-        }
-
-        console.log(userId)
-
         async function fetchUserData() {
             try {
                 

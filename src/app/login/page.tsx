@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { api_url } from '@/utils/fetch-url';
+import jwtUtils from '@/utils/jwt-utils';
 
 const loginFormSchema = z.object({
     email: z.email({ message: "Email inválido" }),
@@ -48,7 +49,9 @@ export default function Login() {
                 })
             })
 
-            if (res.ok) {
+            const user = jwtUtils.getSub;
+            
+            if (res.ok && !!user) {
                 toast.success("Logado com sucesso")  
                 setTest(true);
             } else {
@@ -86,6 +89,13 @@ export default function Login() {
 
 
                         <Button title='Entrar' buttonStyle='PRIMARY' disabled={isLoading}/>
+
+                        <Button title='asasntrar' onClick={() => {
+            const user = jwtUtils.getSub;
+                            
+                            
+                            alert(user)
+                        }} buttonStyle='PRIMARY' disabled={isLoading}/>
                     </form>
                 </div>
             </section>
